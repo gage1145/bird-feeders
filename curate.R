@@ -3,35 +3,28 @@ library(quicR)
 
 
 
-files <- list.files("raw", full.names = TRUE)
-threshold <- 2
 df_list <- list()
 
-for (file in files) {
+# Curation function for vectorized operation.
+curate <- function(file) {
   print(file)
-  meta <- organize_tables(file) %>%
-    convert_tables()
-  
-  info <- get_meta(file)
-  
-  date <- info[[which(info$Meta_ID == "Date"), "Meta_info"]]
-  reader <- str_extract(file, "_r\\d+") %>%
-    str_replace("_", "")
-  
-  df_ <- get_real(file)[[1]]
-  
-  df_norm <- normalize_RFU(df_)
-  
-  analyzed <- calculate_metrics(df_norm, meta, MS_window = 4L) %>%
-    mutate(
-      Date = date,
-      Reader = reader
+  append(
+    df_list,
+    calculate_metrics(
+      normalize_RFU(get_real(file)[[1]]),
+      convert_tables(organize_tables(file))
     ) %>%
-    relocate(c(Date, Reader), .after = Dilutions)
-  
-  df_list <- append(df_list, list(analyzed))
+      mutate(
+        Date = filter(get_meta(file), Meta_ID == "Date")[["Meta_info"]],
+        Reader = str_replace(str_extract(file, "_r\\d+"), "_", "")
+      ) %>%
+      relocate(c(Date, Reader), .after = Dilutions) %>%
+      list()
+  )
 }
 
-df_list <- bind_rows(df_list)
-write.csv(df_list, "data/data.csv", row.names = FALSE)
+# Vectorized iteration of all raw data files.
+df_list <- sapply(list.files("raw", full.names = TRUE), curate) %>%
+  bind_rows()
 
+write.csv(df_list, "data/data.csv", row.names = FALSE)
