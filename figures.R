@@ -10,13 +10,6 @@ df_ <- read.csv("data/data.csv", check.names = FALSE) %>%
   mutate_at("Sample IDs", ~str_remove(., " ")) %>%
   filter(!(`Sample IDs` %in% c("N", "P"))) %>%
   left_join(meta, "Sample IDs")
-  # separate_wider_delim(
-  #   `Period in environment`,
-  #   " - ",
-  #   names = c("start", "end")
-  # )
-
-
 
 
 df_ %>%
@@ -49,14 +42,23 @@ df_ %>%
 
 
 
-for (file in list.files("raw", full.names = TRUE)) {
-  
-  filename <- str_split_i(file, "/", 2) %>%
-    str_remove(".xlsx")
-  locations <- get_sample_locations(file)
-  raw <- get_real(file)[[1]]
-  
-  plate_view(raw, locations) +
+multi_plate <- function(file) {
+  plate_view(
+    get_real(file)[[1]], 
+    get_sample_locations(file)
+  ) +
     ggtitle(file)
-  ggsave(paste0("figures/", filename, "_plate_view.png"), width = 12, height = 8)
+  ggsave(
+    paste0(
+      "figures/", 
+      str_split_i(file, "/", 2) %>% str_remove(".xlsx"), 
+      "_plate_view.png"
+    ), 
+    width = 12, 
+    height = 8
+  )
 }
+
+sapply(list.files("raw", full.names = TRUE), multi_plate)
+
+
